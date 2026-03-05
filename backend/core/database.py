@@ -7,12 +7,13 @@ from sqlalchemy.pool import NullPool
 
 from .config import settings
 
-# 创建异步引擎
+# 创建异步引擎（使用MySQL）
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
     poolclass=NullPool,  # 使用NullPool避免异步连接池问题
     future=True,
+    pool_pre_ping=True,  # 连接前先ping一下
 )
 
 # 创建会话工厂

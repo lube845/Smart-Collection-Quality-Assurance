@@ -1,25 +1,27 @@
 version: '3.8'
 
 services:
-  # PostgreSQL数据库
-  postgres:
-    image: postgres:15-alpine
-    container_name: asr_postgres
+  # MySQL数据库
+  mysql:
+    image: mysql:8.0
+    container_name: asr_mysql
     environment:
-      POSTGRES_USER: asr_admin
-      POSTGRES_PASSWORD: asr_secure_2024
-      POSTGRES_DB: asr_quality_db
+      MYSQL_ROOT_PASSWORD: asr_root_2024
+      MYSQL_USER: asr_admin
+      MYSQL_PASSWORD: asr_secure_2024
+      MYSQL_DATABASE: asr_quality_db
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
     ports:
-      - "5432:5432"
+      - "3306:3306"
     networks:
       - asr_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U asr_admin"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pasr_root_2024"]
       interval: 10s
       timeout: 5s
       retries: 5
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
 
   # Redis缓存和消息队列
   redis:
@@ -45,7 +47,13 @@ services:
       dockerfile: docker/Dockerfile.backend
     container_name: asr_backend
     environment:
-      - DATABASE_URL=postgresql://asr_admin:asr_secure_2024@postgres:5432/asr_quality_db
+      # 使用Docker内MySQL
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=asr_admin
+      - DB_PASSWORD=asr_secure_2024
+      - DB_NAME=asr_quality_db
+      - IS_DOCKER=true
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
       - ASR_API_URL=${ASR_API_URL:-http://localhost:8001}
@@ -57,7 +65,7 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      postgres:
+      mysql:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -102,7 +110,7 @@ services:
       retries: 3
 
 volumes:
-  postgres_data:
+  mysql_data:
   redis_data:
   minio_data:
 
